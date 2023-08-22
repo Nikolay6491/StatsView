@@ -11,5 +11,11 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         val statsView = findViewById<StatsView>(R.id.statsView)
 
         statsView.data = listOf(500f, 500f, 500f, 500f)
+
+        statsView.postDelayed({
+            statsView.data = listOf(
+                500F, 500F, 500F, 500F
+            )
+        }, 300)
     }
 }

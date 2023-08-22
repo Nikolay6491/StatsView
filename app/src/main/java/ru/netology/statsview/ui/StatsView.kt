@@ -1,5 +1,6 @@
 package ru.netology.statsview.ui
 
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -7,9 +8,10 @@ import android.graphics.PointF
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
+import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
 import ru.netology.statsview.R
-import kotlin.math.ceil
+import ru.netology.statsview.utils.AndroidUtils
 import kotlin.math.min
 import kotlin.random.Random
 
@@ -19,15 +21,20 @@ class StatsView @JvmOverloads constructor(
     defStyleAttr: Int = 0,
     defStyleRes: Int = 0
 ) : View(context, attributeSet, defStyleAttr, defStyleRes) {
+    private var radius = 0F
+    private var center = PointF(0F, 0F)
+    private var oval = RectF(0F, 0F, 0F, 0F)
 
     private var textSize = AndroidUtils.dp(context, 20F)
     private var lineWidth = AndroidUtils.dp(context, 5F)
     private var colors = emptyList<Int>()
+    private var progress = 0F
+    private var progressAnimator: ValueAnimator? = null
 
     init {
         context.withStyledAttributes(attributeSet, R.styleable.StatsView) {
-            textSize = getDimension(R.styleable.StatsView_textSize, textSize)
-            lineWidth = getDimension(R.styleable.StatsView_lineWidth, lineWidth)
+            textSize = getDimension(R.styleable.StatsView_textSize, textSize.toFloat()).toInt()
+            lineWidth = getDimension(R.styleable.StatsView_lineWidth, lineWidth.toFloat()).toInt()
             colors = listOf(
                 getColor(R.styleable.StatsView_color1, generateRandomColor()),
                 getColor(R.styleable.StatsView_color2, generateRandomColor()),
@@ -37,13 +44,10 @@ class StatsView @JvmOverloads constructor(
         }
     }
 
-    private var radius = 0F
-    private var center = PointF()
-    private var oval = RectF()
     private val paint = Paint(
         Paint.ANTI_ALIAS_FLAG
     ).apply {
-        strokeWidth = this@StatsView.lineWidth
+        strokeWidth = this@StatsView.lineWidth.toFloat()
         style = Paint.Style.STROKE
         strokeJoin = Paint.Join.ROUND
         strokeCap = Paint.Cap.ROUND
@@ -52,7 +56,7 @@ class StatsView @JvmOverloads constructor(
     private val textPaint = Paint(
         Paint.ANTI_ALIAS_FLAG
     ).apply {
-        textSize = this@StatsView.textSize
+        textSize = this@StatsView.textSize.toFloat()
         textAlign = Paint.Align.CENTER
         style = Paint.Style.FILL
         strokeJoin = Paint.Join.ROUND
@@ -62,7 +66,7 @@ class StatsView @JvmOverloads constructor(
     var data: List<Float> = emptyList()
         set(value) {
             field = normalizeData(value)
-            invalidate()
+            update()
         }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -83,14 +87,14 @@ class StatsView @JvmOverloads constructor(
         var startAngle = -90F
         data.forEachIndexed { index, d ->
             paint.color = colors.getOrElse(index) { generateRandomColor() }
-            canvas.drawArc(oval, startAngle, d * 360F, false, paint)
+            canvas.drawArc(oval, startAngle + progress * 360F, d * 360F, false, paint)
             startAngle += d * 360F
         }
 
         startAngle = -90F
         data.forEachIndexed { index, d ->
             paint.color = colors.getOrElse(index) { generateRandomColor() }
-            canvas.drawArc(oval, startAngle, Float.MIN_VALUE, false, paint)
+            canvas.drawArc(oval, startAngle + progress * 360F, Float.MIN_VALUE, false, paint)
             startAngle += d * 360F
         }
 
@@ -110,10 +114,24 @@ class StatsView @JvmOverloads constructor(
         return normalData
     }
 
-    private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
-}
+    private fun update() {
+        progressAnimator?.let {
+            it.removeAllListeners()
+            it.cancel()
+        }
+        progress = 0F
 
-object AndroidUtils {
-    fun dp(context: Context, dp: Float): Float =
-        ceil(context.resources.displayMetrics.density * dp)
+        progressAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+            addUpdateListener { anim ->
+                progress = anim.animatedValue as Float
+                invalidate()
+            }
+            duration = 500
+            interpolator = LinearInterpolator()
+        }.also {
+            it.start()
+        }
+    }
+
+    private fun generateRandomColor() = Random.nextInt(0xFF000000.toInt(), 0xFFFFFFFF.toInt())
 }
