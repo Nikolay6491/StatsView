@@ -87,7 +87,7 @@ class StatsView @JvmOverloads constructor(
         var startAngle = -90F
         data.forEachIndexed { index, d ->
             paint.color = colors.getOrElse(index) { generateRandomColor() }
-            canvas.drawArc(oval, startAngle , d * 360F * progress, false, paint)
+            canvas.drawArc(oval, startAngle + progress * 360F, d * 360F * progress, false, paint)
             startAngle += d * 360F
         }
 
